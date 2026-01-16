@@ -1,0 +1,80 @@
+Project-P1L0T HANDOFF (for new Codex window)
+===========================================
+
+Goal
+- Stable Project-P1L0T v1.01.1 that launches and can play Frontier Defense (P2P host/join).
+- Fix launcher wiring, logging, and profile launch reliability first.
+
+Repo + Key Paths
+- Repo root: C:\Project-P1L0T\Project-P1L0T_v1.01.1\
+- Launcher root: C:\Project-P1L0T\Project-P1L0T_v1.01.1\launcher
+- Launcher server: C:\Project-P1L0T\Project-P1L0T_v1.01.1\launcher\server.js
+- Launcher config: C:\Project-P1L0T\Project-P1L0T_v1.01.1\launcher\launcher.config.json
+- Launcher logs: C:\Project-P1L0T\Project-P1L0T_v1.01.1\launcher\logs\launcher-server.log
+- Launch logs: C:\Project-P1L0T\Project-P1L0T_v1.01.1\launcher\logs\launch-*.log
+- Modpack root: C:\Project-P1L0T\Project-P1L0T_v1.01.1\modpack
+- Northstar: C:\Project-P1L0T\Project-P1L0T_v1.01.1\modpack\R2Northstar
+- Mods: C:\Project-P1L0T\Project-P1L0T_v1.01.1\modpack\R2Northstar\mods
+- Project-P1L0T mod folder (missing mod.json): C:\Project-P1L0T\Project-P1L0T_v1.01.1\modpack\R2Northstar\mods\Project-P1L0T
+- UI assets: C:\Project-P1L0T\Project-P1L0T UI
+- Cinematic images: C:\Project-P1L0T\Project-P1L0T pictures\cinematic
+- Desktop shortcut used: E:\OneDrive\Desktop\Launch Project-P1L0T.lnk
+
+Launcher Issues (High Priority)
+1) Launch argument uses wrong profile path.
+   - server.js uses: -profile=${paths.r2NorthstarPath}
+   - Should use profile root: -profile=${paths.profilePath}
+   - Mismatch likely causing Tier0 errors / Titanfall2.exe not detected.
+2) Titanfall2.exe process detection often fails.
+   - server.js waits for Titanfall2.exe only. Detection fails even when Northstar runs.
+   - Consider: accept launch success if Northstar log advanced and no compile errors OR expand detection to include r5apex.exe and NorthstarLauncher staying alive briefly.
+3) Project-P1L0T mod missing mod.json (required by Northstar).
+   - Create a valid mod.json in Project-P1L0T mod root.
+4) enabledmods.json missing / mismatched. Launcher already has ensureEnabledModsFile but missing mods produce many warnings. Need import or reconcile.
+5) Launcher should minimize only after loading popup completes and re-open when game exits (already requested).
+6) CMD window should close when launcher fully exits.
+
+Launcher UI Requests
+- Loading screen: fix stretched logo, change "Titan OS v3.0" -> "Version 1.01.1".
+- Loading log window must reflect current log (not stuck at 95%).
+- Main menu news area:
+  - Use cinematic images from C:\Project-P1L0T\Project-P1L0T pictures\cinematic.
+  - Patch notes tab must switch; no scrollbar; auto-resize to content.
+  - Patch notes content should be real (from changes done, no made-up).
+- New UI build is already being used; must wire placeholders to actual APIs again.
+
+Modpack / Northstar Issues
+- Many mod compile errors in Northstar logs. User requested: DO NOT DISABLE further mods; fix manually.
+- Known compile errors (from logs):
+  - Grunt Mode Overhaul: missing ProgressionEnabledForPlayer
+  - Better Server Browser: missing NSGetModVersionByModName
+  - Klemmbaustein.TetherMod: missing NSGetModVersionByModName
+  - Raintrap341.PocketBoostStore: missing GetGameState
+  - Peepee.TitanFramework: missing FrameworkLTSCallback_TitanButton_OnFocused
+  - ModSettingsPlus: AddColorPickerMenu duplicate
+- Missing mods in enabledmods.json cause verify/compat failures. Mods were moved to C:\Project-P1L0T (NEW MODS). Import non-cosmetic mods (launcher has import bulk).
+
+Project-P1L0T Mod (gameplay) TODO Summary
+- Focus: rodeo + ping system stability (aim+E for rodeo, V wheel left/right click, priority system, queue, patrol mode).
+- Phone booth should persist (no manual command each session), interactable, refills titan meter; uses saved location.
+- Ping wheel clipping fixes; should select on release; no E for ping.
+- Default titan follow when no command; guard/attack/defend contextual rules.
+- Save/load for forge (log-based fallback if NS JSON APIs missing).
+
+Important User Constraints
+- Do not open multiple game instances.
+- Avoid heavy testing that heats CPU.
+- User wants to keep mods enabled; fix instead of disabling.
+- Must end every response with:
+  over and out
+
+  - Freya
+- Must ping webhook with message: "Freya awaiting reply." when done with tasks.
+
+Immediate Next Steps (suggested)
+1) Fix server.js launch args (profile path) + improve process detection.
+2) Add mod.json for Project-P1L0T.
+3) Verify launcher config paths and ensure enabledmods.json present.
+4) Rewire new UI placeholders to server APIs; fix loading log streaming.
+5) Identify/patch mods with missing functions or add compatibility shim (if possible).
+

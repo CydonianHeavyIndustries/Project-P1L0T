@@ -1,0 +1,59 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install UI dependencies
+        run: npm install
+        working-directory: ui
+
+      - name: Build UI
+        run: npm run build
+        working-directory: ui
+
+      - name: Install launcher dependencies
+        run: npm install
+        working-directory: launcher/desktop
+
+      - name: Sync UI into launcher
+        shell: powershell
+        run: |
+          Remove-Item -Recurse -Force launcher/web -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force launcher/web | Out-Null
+          Copy-Item -Recurse -Force ui/dist/* launcher/web
+
+      - name: Build installer
+        run: npm run dist
+        working-directory: launcher/desktop
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      - name: Publish release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            launcher/desktop/dist/*.exe
+            launcher/desktop/dist/*.blockmap
+
+      - name: Publish modpack asset (if provided)
+        if: ${{ hashFiles('Project-P1L0T-modpack.zip') != '' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Project-P1L0T-modpack.zip

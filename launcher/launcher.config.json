@@ -1,0 +1,16 @@
+{
+  "port": 5544,
+  "dataPath": "C:\\Project-P1L0T\\data",
+  "profilePath": "C:\\Project-P1L0T\\modpack",
+  "steamPath": "C:\\Program Files (x86)\\Steam",
+  "tf2Path": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Titanfall2",
+  "gamePath": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Titanfall2\\Titanfall2.exe",
+  "launcherExe": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Titanfall2\\NorthstarLauncher.exe",
+  "configFilePath": "C:\\Project-P1L0T\\modpack\\R2Northstar\\mods\\Project-P1L0T\\p1lot.config.json",
+  "launchParams": [
+    "-novid",
+    "-high",
+    "-fullscreen",
+    "+fps_max 144"
+  ]
+}
