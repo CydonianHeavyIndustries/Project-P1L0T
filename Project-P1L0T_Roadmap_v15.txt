@@ -1,0 +1,273 @@
+PROJECT ROADMAP - PROJECT-P1L0T (v15 FINAL SHIP VERSION)
+VISION STATEMENT:
+"This is Titanfall 3 - built through systems, memory, mastery, and respect for the player."
+
+This document is BOTH a design manifesto AND a production contract.
+It defines WHAT we build, HOW we build it, and HOW we avoid breaking it.
+
+Core project rule: every update or feature MUST be reflected in the GitHub repo.
+Roadmap acts as the single source of truth for Codex and collaborators.
+
+====================================================================
+SECTION 0 - ABSOLUTE CORE RULES (NON-NEGOTIABLE)
+====================================================================
+- Systems over spectacle
+- Persistence over resets
+- Mastery over grind
+- Player agency over AI cleverness
+- Failure is canon
+- No live-service manipulation
+- No real ML - rule-based only
+- Reuse assets, reuse code, reuse patterns
+- Do not delete broken things - FIX them
+
+If a decision violates these rules, it is WRONG.
+
+====================================================================
+SECTION 1 - THE CREATION PATH (MANDATORY WORKFLOW)
+====================================================================
+ALL FEATURES MUST FOLLOW THIS PATH - NO EXCEPTIONS.
+
+STEP 1 - CREATE, NEVER DESTROY
+DO:
+- Create new files when experimenting
+- Create new modules when behavior changes
+- Create wrappers, adapters, shims
+- Rewrite broken code into a clean replacement
+- Deprecate old paths safely
+DON'T:
+- Delete code "because it doesn't work"
+- Rip out systems without understanding intent
+- Remove logic just to silence errors
+- Break backward compatibility casually
+RULE: Broken code is TECHNICAL DEBT, not trash. Debt must be paid down, not erased.
+
+STEP 2 - DEFINE THE CONTRACT (BEFORE CODING)
+Every change MUST start with a written contract:
+- Goal (player-facing result)
+- Inputs (what triggers it)
+- Outputs (what changes)
+- Server-authoritative state
+- Persistence impact
+- Fail-safes
+- Acceptance criteria
+- Test plan
+If this is missing, STOP.
+
+STEP 3 - DATA & CONFIG FIRST
+DO:
+- Define data structures first
+- Add schema_version to all persistent data
+- Add config knobs (cvars/json)
+- Provide safe defaults and fallbacks
+DON'T:
+- Hardcode tuning values
+- Assume data always exists
+- Crash on missing or old saves
+
+STEP 4 - SERVER STATE MACHINE
+DO:
+- Implement explicit state machines
+- Log all state transitions
+- Add timeouts to all states
+- Make server authoritative
+DON'T:
+- Hide state in booleans
+- Let clients decide outcomes
+- Allow infinite loops or dead states
+
+STEP 5 - OBSERVABILITY BEFORE POLISH
+DO:
+- Add debug toggles
+- Add dev console commands
+- Add logging for: state changes, saves/loads, AI decisions
+DON'T:
+- Add UI, FX, or VO first
+- "Hope it works" without inspection
+
+STEP 6 - UI & FLAVOR LAST
+DO:
+- Bind UI strictly to real state
+- Keep UI subtle
+- Prefer text/radio over cinematics
+DON'T:
+- Fake systems with UI
+- Add spectacle without mechanics
+
+STEP 7 - REGRESSION & SHIP
+DO:
+- Run full test checklist
+- Verify lobby -> match -> PvE -> extraction
+- Verify persistence
+- Update roadmap + changelog
+
+====================================================================
+SECTION 2 - GLOBAL DO & DON'T (CODING LAW)
+====================================================================
+ABSOLUTE DO
+- Create files
+- Rewrite code cleanly
+- Refactor safely
+- Add compatibility layers
+- Add migration paths
+- Fix bugs at the root cause
+- Leave code BETTER than you found it
+
+ABSOLUTE DON'T
+- Delete broken code
+- Remove systems to "make it work"
+- Comment out logic permanently
+- Ship uninspectable behavior
+- Trade stability for speed
+
+Rule of thumb: If something breaks - UNDERSTAND IT, THEN FIX IT.
+
+====================================================================
+SECTION 3 - CORE SYSTEMS (LOCKED)
+====================================================================
+This project ships with TWO learning systems:
+1) NEMESIS SYSTEM (Enemy that remembers you)
+2) BUDDY TITAN SYSTEM (Ally that learns you)
+These systems are MIRRORS. One hunts you. One protects you.
+Both are persistent. Both are rule-based. Both are sacred.
+
+====================================================================
+SECTION 4 - BUDDY TITAN PRIME DIRECTIVE
+====================================================================
+PRIMARY DIRECTIVE: PROTECT PILOT
+- Buddy Titan may force eject pilot to save them, sacrifice itself, issue tactical callouts
+- Player agency ALWAYS wins
+- Forced actions are rare, justified, configurable
+This directive outranks objectives, target elimination, Titan self-preservation.
+
+====================================================================
+SECTION 5 - NEMESIS SYSTEM CONTRACT
+====================================================================
+- Nemesis foreshadows, retreats, returns, remembers, holds grudges
+- Nemesis adapts deterministically
+- Nemesis failure or escape becomes canon
+Death is iteration, not deletion.
+
+====================================================================
+SECTION 6 - IDENTITY & LEGACY
+====================================================================
+- Titan chassis != Titan OS
+- Player names Titan OS on first launch
+- OS name persists and speaks
+- Player save IS the campaign
+- No resets, no prestige, no FOMO
+
+====================================================================
+SECTION 7 - FAILURE IS CONTENT
+====================================================================
+- Losses persist, world remembers, NPCs react, Nemesis evolves
+- Titan sacrifices matter
+Failure is not rollback - it is STORY.
+
+====================================================================
+SECTION 8 - FINAL SHIP RULE
+====================================================================
+If a feature:
+- Breaks movement
+- Removes player agency
+- Deletes history
+- Encourages grind
+- Relies on randomness
+- Requires deleting code to function
+IT DOES NOT SHIP.
+
+====================================================================
+SECTION 9 - IMPLEMENTATION PHASES (ACTIVE BACKLOG)
+====================================================================
+PHASE 1 - LOBBY FOUNDATION
+1) Lobby Mode (Exoplanet)
+   - Players spawn into Exoplanet as a free-roam lobby.
+   - Acts as the main hub before any match.
+2) Extraction-Style Match Start
+   - When all players are ready, they board a dropship.
+   - Boarding the ship triggers match start (Attrition-style extraction logic).
+3) Friend Invite System (Lobby)
+   - Invite friends directly into the lobby.
+   - Seamless party management.
+4) Invite Lobby -> Match
+   - Pull invited friends directly from lobby into the active game.
+
+PHASE 2 - LOBBY INTERACTIVITY
+5) NPCs in Lobby
+   - Roaming NPCs.
+   - Interact to change loadouts, settings, utilities.
+6) Loadout Testing Range
+   - Firing range inside or attached to lobby.
+   - Test weapons, Titans, perks instantly.
+7) Titan Meter Refill Phone Booth
+   - Specific phone booth on Exoplanet.
+   - Instantly refills Titan meter.
+   - Designed for testing (no long cooldown waits).
+
+PHASE 3 - TITAN & AI IMPROVEMENTS
+8) Buddy Titan Rodeo Fix
+   - Fix rodeo logic for friendly/Buddy Titans.
+9) Phase Embark via Buddy Rodeo
+   - While rodeoing your own Titan: press E to instantly embark.
+   - Uses existing Phase Shift effect.
+   - Skips embark animation (no new animations required).
+10) Hold V - Titan Command System
+   - Hold V + ground -> Titan moves to location.
+   - Hold V + enemy -> Titan focuses that enemy as priority target.
+
+PHASE 4 - WEAPONS (SMR FOCUS)
+11) SMR Crosshair Improvement
+12) SMR Ammo Baseline Increase (~20 -> 40)
+13) SMR On-the-Fly Weapon Modes (hold R or similar)
+14) Modular Optics for SMR (changeable during gameplay)
+
+PHASE 5 - MOD INTEGRATION
+15) PhaseShiftReworkMod - integrate into modpack.
+16) Vanguard-Class Samurai Titan - integrate into roster.
+17) Custom / Mix-and-Match Titan Mod - combined abilities.
+
+PHASE 6 - GAME MODES
+18) Local Hosting - PvE / Frontier Defense
+   - Local-hosted Frontier Defense.
+   - Offline or private PvE play.
+
+PHASE 7 - PROGRESSION & PLAYER RETENTION
+19) Progression System (lobby-based)
+   - Unlock ranks, cosmetics, visual rewards.
+20) Achievement-Based Unlocks (no microtransactions)
+
+PHASE 8 - EVENTS & CONTENT EXPANSION
+21) Dynamic Lobby Events (mini-games, timed challenges, warm-ups)
+22) Content Expansion (new guns, Titans, power-ups, perks, utilities)
+
+PHASE 9 - PLAYER WANTS / COMMUNITY NEEDS
+23) Player-Driven Features:
+   - Custom maps & community content tools
+   - QoL improvements (HUD toggles, FOV options)
+   - Matchmaking improvements
+   - Expanded PvE / narrative-style content
+
+====================================================================
+LEGACY WORKSTREAM (v1.01.1 STABILITY PASS)
+====================================================================
+Phase A - Launcher reliability
+- Fix launcher profile arg (-profile=profilePath), improve process-detection success, live log window, minor UI polish.
+
+Phase B - Modpack stability pass
+- Clear compile errors without disabling mods.
+- Restore required mods from backups; keep _stash_incompatible isolated; smoke test Northstar + FD host/join.
+
+Phase C - Custom loadouts & title polish
+- Enable primary/core/chassis editing for custom Titans; add validation overrides; unhide chassis button.
+- Restore Project-P1L0T title screen and real patch notes/news feed.
+
+Phase D - Gameplay feature fixes
+- Rodeo + ping stability, phone booth persistence with titan meter refill, default titan follow/guard/attack logic, forge save/load fallback.
+
+Phase E - Coop/PvE prototype
+- Multi-step FD-style mission: waves, objectives, extraction, respawn cooldown rules; difficulty/budget tuning knobs.
+
+Phase F - Packaging & release
+- Installer/wizard, semantic version tags (start v1.0.0 baseline), changelog, publish to GitHub, send Discord webhook "Freya awaiting reply."
+
+END OF ROADMAP - SHIP THIS
