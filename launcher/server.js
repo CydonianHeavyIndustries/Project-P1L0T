@@ -11,12 +11,15 @@ const dataDir = process.env.P1LOT_DATA_DIR || path.join(installRoot, "data");
 const downloadsDir = path.join(dataDir, "downloads");
 const rootDir = __dirname;
 const webDir = path.join(rootDir, "web");
+const upstreamRepo = "https://github.com/CydonianHeavyIndustries/Project-P1L0T.git";
+const repoDir = path.join(dataDir, "repo");
+let activeWebDir = webDir;
 const configPath = path.join(dataDir, "launcher.config.json");
 const logsDir = path.join(dataDir, "logs");
 const serverLogPath = path.join(logsDir, "launcher-server.log");
 const launchSignalPath = path.join(logsDir, "launch.signal.json");
 let lastLaunchLogPath = null;
-const serverVersion = "1.0.0";
+const serverVersion = "p1lot-launcher-2026-01-12b";
 const githubRepo = "CydonianHeavyIndustries/Project-P1L0T";
 const modpackAssetName = "Project-P1L0T-modpack.zip";
 const modpackVersionFile = "modpack.version.json";
@@ -694,6 +697,27 @@ async function waitForProcess(processName, attempts = 8, delayMs = 1000) {
   return false;
 }
 
+function killProcess(processName) {
+  return new Promise((resolve) => {
+    const child = spawn("taskkill", ["/F", "/IM", processName], {
+      windowsHide: true,
+      stdio: "ignore",
+    });
+    child.on("exit", () => resolve(true));
+    child.on("error", () => resolve(false));
+  });
+}
+
+async function waitForProcessExit(processName, attempts = 8, delayMs = 500) {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    if (!(await isProcessRunning(processName))) {
+      return true;
+    }
+    await sleep(delayMs);
+  }
+  return false;
+}
+
 async function waitForProcessOrExit(processName, maxMs, delayMs, exitCodeRef) {
   const deadline = Date.now() + maxMs;
   while (Date.now() < deadline) {
@@ -751,7 +775,11 @@ function saveConfig(config) {
 
 function getPaths(config) {
   const profilePath = config.profilePath;
-  const r2NorthstarPath = path.join(profilePath, "R2Northstar");
+  const directModsPath = path.join(profilePath, "mods");
+  const directEnabledModsPath = path.join(profilePath, "enabledmods.json");
+  const r2NorthstarPath = fs.existsSync(directModsPath) && fs.existsSync(directEnabledModsPath)
+    ? profilePath
+    : path.join(profilePath, "R2Northstar");
   const modsPath = path.join(r2NorthstarPath, "mods");
   const enabledModsPath = path.join(r2NorthstarPath, "enabledmods.json");
   const profileLauncher = path.join(profilePath, "NorthstarLauncher.exe");
@@ -1574,20 +1602,54 @@ function getContentType(filePath) {
   }
 }
 
+function tryGitSync() {
+  // Require git in PATH
+  const git = "git";
+  try {
+    if (!fs.existsSync(repoDir)) {
+      const r = spawnSync(git, ["clone", upstreamRepo, repoDir], { stdio: "pipe" });
+      if (r.status !== 0) {
+        appendLog("warn", `git clone failed (${r.status}): ${r.stderr?.toString().trim() || "unknown error"}`);
+        return;
+      }
+      appendLog("info", `Cloned launcher repo to ${repoDir}`);
+    } else {
+      const rFetch = spawnSync(git, ["-C", repoDir, "fetch", "--all"], { stdio: "pipe" });
+      if (rFetch.status !== 0) {
+        appendLog("warn", `git fetch failed (${rFetch.status}): ${rFetch.stderr?.toString().trim() || "unknown error"}`);
+        return;
+      }
+      const rReset = spawnSync(git, ["-C", repoDir, "reset", "--hard", "origin/main"], { stdio: "pipe" });
+      if (rReset.status !== 0) {
+        appendLog("warn", `git reset failed (${rReset.status}): ${rReset.stderr?.toString().trim() || "unknown error"}`);
+        return;
+      }
+      appendLog("info", "Launcher repo updated from origin/main");
+    }
+    const candidate = path.join(repoDir, "launcher", "web");
+    if (fs.existsSync(candidate) && fs.existsSync(path.join(candidate, "index.html"))) {
+      activeWebDir = candidate;
+      appendLog("info", `Serving web UI from synced repo: ${activeWebDir}`);
+    }
+  } catch (error) {
+    appendLog("warn", `git sync error: ${error instanceof Error ? error.message : "unknown"}`);
+  }
+}
+
 function serveStatic(req, res) {
   const parsed = new URL(req.url, "http://localhost");
-  let filePath = path.join(webDir, parsed.pathname);
+  let filePath = path.join(activeWebDir, parsed.pathname);
   if (parsed.pathname === "/") {
-    filePath = path.join(webDir, "index.html");
+    filePath = path.join(activeWebDir, "index.html");
   }
 
-  if (!filePath.startsWith(webDir)) {
+  if (!filePath.startsWith(activeWebDir)) {
     sendText(res, 403, "Forbidden");
     return;
   }
 
   if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
-    filePath = path.join(webDir, "index.html");
+    filePath = path.join(activeWebDir, "index.html");
   }
 
   try {
@@ -1618,6 +1680,9 @@ const envPort = Number(process.env.P1LOT_PORT);
 if (Number.isFinite(envPort) && envPort > 0) {
   config.port = envPort;
 }
+
+// Sync launcher assets from GitHub before starting the server (best effort).
+tryGitSync();
 
 ensureDir(logsDir);
 appendLog("info", "Launcher server starting");
@@ -1760,8 +1825,12 @@ const server = http.createServer(async (req, res) => {
       const payload = body ? JSON.parse(body) : {};
       config = loadConfig();
       const paths = getPaths(config);
+      await killProcess("Titanfall2.exe");
+      await killProcess("NorthstarLauncher.exe");
+      await waitForProcessExit("Titanfall2.exe", 6, 500);
+      await waitForProcessExit("NorthstarLauncher.exe", 6, 500);
       if (await isProcessRunning("Titanfall2.exe")) {
-        sendJson(res, 409, { error: "Titanfall2.exe is already running" });
+        sendJson(res, 409, { error: "Titanfall2.exe is still running. Close it and try again." });
         return;
       }
       if (!fs.existsSync(paths.launcherPath)) {
