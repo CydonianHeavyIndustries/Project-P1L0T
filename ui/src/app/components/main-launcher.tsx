@@ -28,23 +28,20 @@ const slides: Slide[] = [
   {
     id: 1,
     image: cinematic01,
-    title: "PROJECT-P1L0T NEWS",
-    description:
-      "Modpack auto-sync now pulls the latest Project-P1L0T build from GitHub releases on first run.",
+    title: "PROJECT-P1L0T v2.0.0",
+    description: "Roadmap v15 applied. Launcher now treats GitHub main as source of truth and self-syncs on boot.",
   },
   {
     id: 2,
     image: cinematic02,
     title: "REPO-BASED MODPACK",
-    description:
-      "Settings now surface the modpack version and a one-click update action.",
+    description: "Modpack lives in repo and updates alongside the launcher for every boot.",
   },
   {
     id: 3,
     image: cinematic03,
-    title: "LAUNCH FLOW REFINEMENT",
-    description:
-      "Launch flow now targets the correct modpack profile path for consistent startup.",
+    title: "STABILITY & VERIFY",
+    description: "Default profile path locked to modpack; verify/compile flow tightened for 58/58 mods active.",
   },
   {
     id: 4,
@@ -58,12 +55,12 @@ const slides: Slide[] = [
 ];
 
 const patchNotes = [
-  "Auto-downloads the latest modpack from GitHub releases on first run.",
-  "Added modpack update control and version visibility inside Settings.",
-  "Fixed launch profile path to point at the modpack root.",
-  "Launcher data and config now default to C:\\Project-P1L0T\\data.",
-  "Added Project-P1L0T mod metadata (mod.json) for Northstar.",
-  "Versioning reset to semantic v1.0.0.",
+  "Launcher now hard-syncs with GitHub main on boot (fetch + hard reset).",
+  "Repo-based modpack: assets and 58/58 mods bundled in-profile; verification fixes applied.",
+  "Stability: Fort War scripts restored; WeaponLaser vscripts stub; EntityStatus settings temporarily stubbed.",
+  "Version bump to v2.0.0 aligned with roadmap v15 (ship rules + phases).",
+  "UI assets (logo/icon) now sourced from repo so all agents stay in sync.",
+  "Launch parameters remain at -novid -high -fullscreen +fps_max 144; profile path locked to modpack.",
 ];
 
 export function MainLauncher({
@@ -151,7 +148,7 @@ export function MainLauncher({
               <ExternalLink className="w-3.5 h-3.5 mr-2" />
               Join Us
             </Button>
-            <span className="text-xs text-muted-foreground">v1.0.0</span>
+            <span className="text-xs text-muted-foreground">v2.0.0</span>
           </div>
         </div>
       </div>
