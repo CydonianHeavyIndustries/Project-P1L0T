@@ -148,7 +148,7 @@ export function MainLauncher({
               <ExternalLink className="w-3.5 h-3.5 mr-2" />
               Join Us
             </Button>
-            <span className="text-xs text-muted-foreground">v2.0.0</span>
+            <span className="text-xs text-muted-foreground">v2.0.1</span>
           </div>
         </div>
       </div>

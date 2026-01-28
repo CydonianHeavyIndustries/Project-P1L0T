@@ -16,7 +16,7 @@ const fallbackIndex = path.join(appRoot, "web", "index.html");
 const logPath = path.join(logsDir, "launcher.log");
 const launchSignalPath = path.join(logsDir, "launch.signal.json");
 const appIconPath = path.join(__dirname, "assets", "project-p1lot.ico");
-const expectedServerVersion = "1.0.0";
+const expectedServerVersion = "1.0.1";
 
 function ensureDir(dirPath) {
   if (!fs.existsSync(dirPath)) {

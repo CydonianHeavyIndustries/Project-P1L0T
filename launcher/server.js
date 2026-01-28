@@ -266,7 +266,7 @@ function appendLogRaw(data) {
 function writeLaunchSignal(payload = {}) {
   try {
     ensureDir(logsDir);
-    const signal = { timestamp: Date.now(), ...payload };
+    const signal = { timestamp: Date.now(), progress: 100, state: "launched", ...payload };
     fs.writeFileSync(launchSignalPath, JSON.stringify(signal, null, 2), "utf8");
     // Drive UI state to completion so the launcher doesn't stall at 95%.
     updateModpackState({ status: "launched", phase: "launched", progress: 100, message: "Game launched" });

@@ -133,7 +133,7 @@ export function InitialLoadingScreen({ onComplete }: InitialLoadingScreenProps) 
           </motion.h1>
           <div className="flex items-center justify-center gap-3">
             <div className="h-px w-16 bg-gradient-to-r from-transparent to-primary" />
-            <p className="text-sm text-muted-foreground tracking-widest">Version 1.0.0</p>
+            <p className="text-sm text-muted-foreground tracking-widest">Version 2.0.1</p>
             <div className="h-px w-16 bg-gradient-to-l from-transparent to-primary" />
           </div>
         </div>
