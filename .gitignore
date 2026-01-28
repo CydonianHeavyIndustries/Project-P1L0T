@@ -11,6 +11,7 @@ launcher/desktop/node_modules/
 launcher/web/
 
 modpack/
+data/
 Project-P1L0T-modpack*.zip
 
 ui/*.zip
