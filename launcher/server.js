@@ -369,23 +369,36 @@ function fetchJson(url, headers = {}, redirectCount = 0) {
 
 async function fetchLatestRelease() {
   const url = `https://api.github.com/repos/${githubRepo}/releases/latest`;
-  const data = await fetchJson(url);
-  if (!data || !Array.isArray(data.assets)) {
-    throw new Error("Latest release data missing");
+  try {
+    const data = await fetchJson(url);
+    if (data && Array.isArray(data.assets)) {
+      const asset = data.assets.find((item) => item && item.name === modpackAssetName);
+      if (asset && asset.browser_download_url) {
+        const tag = data.tag_name || data.name || "";
+        const version = normalizeVersion(tag) || "0.0.0";
+        return {
+          version,
+          tag: data.tag_name || "",
+          name: data.name || "",
+          publishedAt: data.published_at || null,
+          assetUrl: asset.browser_download_url,
+          assetSize: Number(asset.size) || 0,
+        };
+      }
+    }
+  } catch (error) {
+    appendLog("warn", `Latest release lookup failed, falling back to repo main zip: ${error instanceof Error ? error.message : "unknown"}`);
   }
-  const asset = data.assets.find((item) => item && item.name === modpackAssetName);
-  if (!asset || !asset.browser_download_url) {
-    throw new Error(`Release asset not found: ${modpackAssetName}`);
-  }
-  const tag = data.tag_name || data.name || "";
-  const version = normalizeVersion(tag) || "0.0.0";
+  // Fallback: use main branch zip so updates always work even without a packaged release.
+  const fallbackUrl = `https://github.com/${githubRepo}/archive/refs/heads/main.zip`;
+  const fallbackVersion = normalizeVersion(serverVersion) || "0.0.0";
   return {
-    version,
-    tag: data.tag_name || "",
-    name: data.name || "",
-    publishedAt: data.published_at || null,
-    assetUrl: asset.browser_download_url,
-    assetSize: Number(asset.size) || 0,
+    version: fallbackVersion,
+    tag: "main",
+    name: "main.zip",
+    publishedAt: null,
+    assetUrl: fallbackUrl,
+    assetSize: 0,
   };
 }
 
