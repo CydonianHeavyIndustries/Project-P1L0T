@@ -2,9 +2,13 @@
   "Name": "Project-P1L0T",
   "Description": "Core Project-P1L0T gameplay systems and content.",
   "Version": "1.0.2",
-  "LoadPriority": "0",
+  "LoadPriority": "9999",
   "RequiredOnClient": true,
   "Scripts": [
+    {
+      "Path": "gamemodes/sh_gamemode_fw.nut",
+      "RunOn": "SERVER && MP"
+    },
     {
       "Path": "p1lot_buddy_titan/sh_p1lot_buddy_titan.gnut",
       "RunOn": "( CLIENT || SERVER ) && MP"
