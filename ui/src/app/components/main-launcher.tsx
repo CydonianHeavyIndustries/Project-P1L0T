@@ -28,8 +28,8 @@ const slides: Slide[] = [
   {
     id: 1,
     image: cinematic01,
-    title: "PROJECT-P1L0T v2.0.0",
-    description: "Roadmap v15 applied. Launcher now treats GitHub main as source of truth and self-syncs on boot.",
+    title: "PROJECT-P1L0T v2.0.2",
+    description: "Roadmap v15 applied. Launcher self-syncs with GitHub and now closes launch progress cleanly.",
   },
   {
     id: 2,
@@ -58,9 +58,9 @@ const patchNotes = [
   "Launcher now hard-syncs with GitHub main on boot (fetch + hard reset).",
   "Repo-based modpack: assets and 58/58 mods bundled in-profile; verification fixes applied.",
   "Stability: Fort War scripts restored; WeaponLaser vscripts stub; EntityStatus settings temporarily stubbed.",
-  "Version bump to v2.0.1 aligned with roadmap v15 (ship rules + phases).",
+  "Version bump to v2.0.2 with launcher progress auto-complete after game start.",
   "UI assets (logo/icon) now sourced from repo so all agents stay in sync.",
-  "Launch flow: launch signal now snaps progress to 100% when game starts; profile path locked to modpack.",
+  "Launch flow: progress now resolves to 100% once Titanfall2.exe is detected.",
 ];
 
 export function MainLauncher({
@@ -148,7 +148,7 @@ export function MainLauncher({
               <ExternalLink className="w-3.5 h-3.5 mr-2" />
               Join Us
             </Button>
-            <span className="text-xs text-muted-foreground">v2.0.1</span>
+            <span className="text-xs text-muted-foreground">v2.0.2</span>
           </div>
         </div>
       </div>
@@ -256,7 +256,7 @@ export function MainLauncher({
             <div className="absolute inset-0 bg-gradient-to-br from-background via-background/90 to-background/60" />
             <div className="relative h-full flex flex-col justify-center px-12 pb-32">
               <div className="max-w-3xl">
-                <h2 className="text-4xl font-bold text-foreground mb-6">Patch Notes v2.0.1</h2>
+                <h2 className="text-4xl font-bold text-foreground mb-6">Patch Notes v2.0.2</h2>
                 <ul className="space-y-3 text-muted-foreground text-lg leading-relaxed">
                   {patchNotes.map((note) => (
                     <li key={note} className="flex gap-3">

@@ -19,7 +19,7 @@ const logsDir = path.join(dataDir, "logs");
 const serverLogPath = path.join(logsDir, "launcher-server.log");
 const launchSignalPath = path.join(logsDir, "launch.signal.json");
 let lastLaunchLogPath = null;
-const serverVersion = "p1lot-launcher-2026-01-29-2.0.1";
+const serverVersion = "p1lot-launcher-2026-01-29-2.0.2";
 const githubRepo = "CydonianHeavyIndustries/Project-P1L0T";
 const modpackAssetName = "Project-P1L0T-modpack.zip";
 const modpackVersionFile = "modpack.version.json";
@@ -1922,6 +1922,7 @@ const server = http.createServer(async (req, res) => {
           : "Northstar log did not update after launch.";
         if (launcherExitCode === 0 || (logAdvanced && compileInfo.errors.length === 0)) {
           appendLog("warn", `Launch may have succeeded without detection. Log: ${lastLaunchLogPath}`);
+          writeLaunchSignal({ action: "launch", note: "launch-may-have-succeeded" });
           sendJson(res, 200, {
             ok: true,
             logPath: lastLaunchLogPath,
@@ -1947,6 +1948,7 @@ const server = http.createServer(async (req, res) => {
         });
         return;
       }
+      writeLaunchSignal({ action: "launch", note: "titanfall-detected" });
       sendJson(res, 200, { ok: true, logPath: lastLaunchLogPath, deferred: Boolean(payload.deferSignal) });
       return;
     }

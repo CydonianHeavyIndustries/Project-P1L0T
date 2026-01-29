@@ -17,7 +17,7 @@ const logPath = path.join(logsDir, "launcher.log");
 const launchSignalPath = path.join(logsDir, "launch.signal.json");
 const appIconPath = path.join(__dirname, "assets", "project-p1lot.ico");
 // Must match serverVersion in launcher/server.js (/api/health response)
-const expectedServerVersion = "p1lot-launcher-2026-01-29-2.0.1";
+const expectedServerVersion = "p1lot-launcher-2026-01-29-2.0.2";
 
 function ensureDir(dirPath) {
   if (!fs.existsSync(dirPath)) {
