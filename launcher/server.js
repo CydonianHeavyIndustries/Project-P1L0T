@@ -1,4 +1,4 @@
-﻿const http = require("http");
+const http = require("http");
 const https = require("https");
 const fs = require("fs");
 const fsp = fs.promises;
@@ -19,7 +19,7 @@ const logsDir = path.join(dataDir, "logs");
 const serverLogPath = path.join(logsDir, "launcher-server.log");
 const launchSignalPath = path.join(logsDir, "launch.signal.json");
 let lastLaunchLogPath = null;
-const serverVersion = "p1lot-launcher-2026-01-12b";
+const serverVersion = "p1lot-launcher-2026-01-29-2.0.1";
 const githubRepo = "CydonianHeavyIndustries/Project-P1L0T";
 const modpackAssetName = "Project-P1L0T-modpack.zip";
 const modpackVersionFile = "modpack.version.json";
