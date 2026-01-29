@@ -1,0 +1,202 @@
+function P1LOT_CallRootFuncSafe( name, argsWithThisAndPlayer = null, argsWithThisOnly = null, argsNoThis = null )
+{
+	if ( !( name in getroottable() ) )
+		return null
+
+	local f = getroottable()[ name ]
+	if ( typeof f != "function" )
+		return null
+
+	// Squirrel in Titanfall can bind some native functions as methods on the root table (implicit 'this').
+	// To be resilient across different environments, try several calling conventions.
+	if ( argsWithThisAndPlayer != null )
+	{
+		try { return f.acall( argsWithThisAndPlayer ) } catch ( e ) {}
+	}
+	if ( argsWithThisOnly != null )
+	{
+		try { return f.acall( argsWithThisOnly ) } catch ( e ) {}
+	}
+	if ( argsNoThis != null )
+	{
+		try { return f.acall( argsNoThis ) } catch ( e ) {}
+		try { return f.call( argsNoThis.len() > 0 ? argsNoThis[0] : null ) } catch ( e ) {}
+	}
+
+	// Last resort: try calling with no args.
+	try { return f() } catch ( e ) {}
+
+	return null
+}
+
+untyped
+
+// Server: buddy-rodeo and embark + allow client-side titan move pings.
+
+global function P1LOT_BuddyTitan_ServerInit
+
+// Northstar loads this script in MP contexts via mod.json.
+// Use main() so init always runs (private_match, mp_lobby, custom gamemodes, etc.).
+void function main()
+{
+	P1LOT_BuddyTitan_ServerInit()
+}
+
+void function P1LOT_BuddyTitan_ServerInit()
+{
+	// Enable titan move command support on servers.
+	// Using console command avoids relying on playlist var helper functions that may not exist in CLIENT VM.
+	try
+	{
+		ServerCommand( "setplaylistvaroverrides titan_move_command_enabled 1" )
+	}
+	catch( e ) {}
+
+	P1LOT_BuddyTitan_SharedInit()
+
+	AddClientCommandCallback( "p1lot_buddy_rodeo", P1LOT_CC_BuddyRodeo )
+	AddClientCommandCallback( "p1lot_buddy_embark", P1LOT_CC_BuddyEmbark )
+
+	// Sandbox: instant titan for Project P1L0T sandbox sessions.
+	AddCallback_OnPlayerRespawned( P1LOT_Sandbox_OnPlayerRespawned )
+}
+
+void function P1LOT_Sandbox_OnPlayerRespawned( entity player )
+{
+	if ( !IsValid( player ) || !IsAlive( player ) )
+		return
+
+	// Only force sandbox behavior for Project P1L0T's sandbox entry.
+	// The main menu button currently loads mp_thaw (fd_easy) into a solo session,
+	// and some flows can still land you in mp_lobby.
+	string map = GetMapName()
+	if ( map != "mp_thaw" && map != "mp_lobby" )
+		return
+
+	// Make titan always available + fill meter.
+	// NOTE: PlayerEarnMeter_* isn't present in all playlists / builds, so instead we use
+	// the engine-exposed titan build timer. Setting it to 0 makes Titanfall immediately ready.
+	// We delay a few frames because respawn callbacks can run before the HUD/build timers are fully initialized.
+	thread P1LOT_Sandbox_DelayedFillTitanMeter( player )
+}
+
+void function P1LOT_Sandbox_DelayedFillTitanMeter( entity player )
+{
+	if ( !IsValid( player ) )
+		return
+
+	// Let loadouts/HUD/playlist logic settle.
+	// In most playlists the earn-meter system (titan-earn) will *re-apply* its own state
+	// right after respawn and can overwrite anything we set too early.
+	//
+	// So instead of a single "set meter" call, we:
+	//  - wait a moment
+	//  - repeatedly force Titanfall-ready for a few seconds
+	//
+	// Key insight: in titan-earn gametypes Riff_TitanAvailability() is set to Custom,
+	// which makes SetTitanRespawnTimer() a no-op (see ShouldSetTitanRespawnTimer).
+	// The *actual* readiness gate is level.nv.titanAvailableBits, set via SetTitanAvailable().
+	// That bypasses the meter logic entirely and makes Titanfall instantly usable.
+	wait 0.5
+
+	for ( int i = 0; i < 30; i++ )
+	{
+		if ( !IsValid( player ) || !IsAlive( player ) )
+			return
+
+		// Force Titanfall-ready.
+		if ( "SetTitanAvailable" in getroottable() )
+			SetTitanAvailable( player )
+
+		// Try to max out the Earn Meter *properly* (this is what drives the HUD bar).
+		// Setting ownedFrac alone isn't enough in all playlists; some only update visuals
+		// when a "goal earned" path runs.
+		// Earn meter system (preferred) - call it defensively because signatures differ between builds/mods
+		local enabledResult = P1LOT_CallRootFuncSafe( "PlayerEarnMeter_Enabled", [ getroottable(), player ], [ getroottable() ], [ player ] )
+		local enabled = ( enabledResult != null ) ? enabledResult : false
+
+		if ( enabled == false )
+		{
+			// Try several variants: (this, player, bool) / (this, player) / (player, bool) / (player)
+			P1LOT_CallRootFuncSafe( "PlayerEarnMeter_SetEnabled", [ getroottable(), player, true ], [ getroottable(), true ], [ player, true ] )
+			P1LOT_CallRootFuncSafe( "PlayerEarnMeter_EnableGoal", [ getroottable(), player ], [ getroottable() ], [ player ] )
+			P1LOT_CallRootFuncSafe( "PlayerEarnMeter_SetGoalUsed", [ getroottable(), player, false ], [ getroottable(), false ], [ player, false ] )
+
+			// Some builds use "owned fraction" (0..1) and/or "earned fraction" to drive Titan availability
+			P1LOT_CallRootFuncSafe( "PlayerEarnMeter_SetOwnedFrac", [ getroottable(), player, 1.0 ], [ getroottable(), 1.0 ], [ player, 1.0 ] )
+			P1LOT_CallRootFuncSafe( "PlayerEarnMeter_AddEarnedFrac", [ getroottable(), player, 2.0 ], [ getroottable(), 2.0 ], [ player, 2.0 ] )
+		}
+		else
+		{
+			// If the system is already enabled, still try forcing owned fraction to full
+			P1LOT_CallRootFuncSafe( "PlayerEarnMeter_SetOwnedFrac", [ getroottable(), player, 1.0 ], [ getroottable(), 1.0 ], [ player, 1.0 ] )
+		}
+
+		// Also try the respawn-timer route for playlists that *do* use it.
+		Riff_ForceTitanAvailability( eTitanAvailability.Always )
+		if ( "SetNextTitanRespawnAvailable" in player )
+			player.SetNextTitanRespawnAvailable( Time() - 1 )
+		if ( "SetTitanBuildTime" in player )
+			player.SetTitanBuildTime( max( 0.0, player.GetTitanBuildTime() ) )
+
+		wait 0.2
+	}
+}
+
+bool function P1LOT_CC_BuddyRodeo( entity player, array<string> args )
+{
+	entity titan = P1LOT_GetSafePetTitan( player )
+	if ( !IsValid( titan ) || !IsAlive( titan ) )
+		return true
+
+	// Basic sanity: close enough + roughly looking at it.
+	float dist = Distance( player.GetOrigin(), titan.GetOrigin() )
+	if ( dist > 350 )
+		return true
+
+	// Don't start if already parented (already in a rodeo/embark/etc)
+	if ( player.GetParent() != null )
+		return true
+
+	// Start rodeo on our own titan
+	try
+	{
+		CodeCallback_StartRodeo( player, titan )
+	}
+	catch( e ) {}
+
+	return true
+}
+
+bool function P1LOT_CC_BuddyEmbark( entity player, array<string> args )
+{
+	entity titan = P1LOT_GetSafePetTitan( player )
+	if ( !IsValid( titan ) || !IsAlive( titan ) )
+		return true
+
+	// Only allow if player is currently attached to this titan.
+	// NOTE: "parent" is a reserved keyword in some Northstar Squirrel builds.
+	entity parentEnt = player.GetParent()
+	if ( parentEnt == null || parentEnt != titan )
+		return true
+
+	// Embark using standard embark path (works even without Lunge context)
+	if ( !PlayerCanEmbarkIntoTitan( player, titan ) )
+		return true
+
+	table ornull embarkDirection = null
+	try
+	{
+		embarkDirection = expect table ornull( FindBestEmbark( player, titan, false ) )
+	}
+	catch( e ) { embarkDirection = null }
+
+	if ( embarkDirection )
+	{
+		thread PlayerEmbarksTitan( player, titan, expect table( embarkDirection ) )
+	}
+
+	return true
+}
+
+// Init is called from gamemode/server init (no top-level statements here).

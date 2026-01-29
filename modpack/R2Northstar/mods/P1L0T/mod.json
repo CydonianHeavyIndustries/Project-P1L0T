@@ -1,0 +1,21 @@
+{
+  "Name": "Project-P1L0T",
+  "Description": "Core Project-P1L0T gameplay systems and content.",
+  "Version": "1.0.2",
+  "LoadPriority": "0",
+  "RequiredOnClient": true,
+  "Scripts": [
+    {
+      "Path": "p1lot_buddy_titan/sh_p1lot_buddy_titan.gnut",
+      "RunOn": "( CLIENT || SERVER ) && MP"
+    },
+    {
+      "Path": "p1lot_buddy_titan/sv_p1lot_buddy_titan.gnut",
+      "RunOn": "SERVER && MP"
+    },
+    {
+      "Path": "p1lot_buddy_titan/cl_p1lot_buddy_titan.gnut",
+      "RunOn": "CLIENT && MP"
+    }
+  ]
+}

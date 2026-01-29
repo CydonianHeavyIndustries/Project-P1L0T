@@ -1,0 +1,7 @@
+global function ClGamemodeP1L0TLobby_Init
+
+void function ClGamemodeP1L0TLobby_Init()
+{
+	// Enable buddy-titan input handling in the sandbox lobby
+	P1LOT_BuddyTitan_ClientInit()
+}

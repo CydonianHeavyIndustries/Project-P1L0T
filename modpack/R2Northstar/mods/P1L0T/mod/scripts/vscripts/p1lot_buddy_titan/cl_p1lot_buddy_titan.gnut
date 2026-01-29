@@ -1,0 +1,152 @@
+untyped
+
+// Client: Input hooks for buddy-rodeo and titan commands.
+
+struct
+{
+	bool adsHeld = false
+	bool vHeld = false
+	float vDownTime = 0.0
+	int vThreadNonce = 0
+} file
+
+global function P1LOT_BuddyTitan_ClientInit
+
+// Northstar loads this script in MP contexts via mod.json.
+// Use main() so init always runs (private_match, mp_lobby, custom gamemodes, etc.).
+void function main()
+{
+	P1LOT_BuddyTitan_ClientInit()
+}
+
+void function P1LOT_BuddyTitan_ClientInit()
+{
+	P1LOT_BuddyTitan_SharedInit()
+
+	// Track ADS
+	// Some configs/binds use +attack2, others use +zoom for ADS.
+	RegisterConCommandTriggeredCallback( "+attack2", P1LOT_OnADSDown )
+	RegisterConCommandTriggeredCallback( "-attack2", P1LOT_OnADSUp )
+	RegisterConCommandTriggeredCallback( "+zoom", P1LOT_OnADSDown )
+	RegisterConCommandTriggeredCallback( "-zoom", P1LOT_OnADSUp )
+
+	// Use key (E):
+	// - if attached to pet titan: embark
+	// - else if ADS held: buddy-rodeo request
+	RegisterConCommandTriggeredCallback( "+use", P1LOT_OnUseDown )
+
+	// V (titan mode): tap toggles follow/guard, hold pings move
+	// Depending on context, the same physical key can dispatch different commands:
+	// - Pilot: titanfall
+	// - Pilot w/ pet titan: titan mode (follow/guard)
+	// - Titan: core
+	// - Some older configs: scriptCommand2/3/4
+	array<string> vDownCmds = [
+		"+titanfall",
+		"+titan_mode",
+		"+titan_ai_mode",
+		"+titan_core",
+		"+scriptCommand2",
+		"+scriptCommand3",
+		"+scriptCommand4",
+	]
+	array<string> vUpCmds = [
+		"-titanfall",
+		"-titan_mode",
+		"-titan_ai_mode",
+		"-titan_core",
+		"-scriptCommand2",
+		"-scriptCommand3",
+		"-scriptCommand4",
+	]
+	foreach ( string cmd in vDownCmds )
+		RegisterConCommandTriggeredCallback( cmd, P1LOT_OnVDown )
+	foreach ( string cmd in vUpCmds )
+		RegisterConCommandTriggeredCallback( cmd, P1LOT_OnVUp )
+}
+
+void function P1LOT_OnADSDown( var arg ) { file.adsHeld = true }
+void function P1LOT_OnADSUp( var arg ) { file.adsHeld = false }
+
+void function P1LOT_OnUseDown( var arg )
+{
+	entity player = GetLocalViewPlayer()
+	if ( !IsValid( player ) )	return
+
+	// NOTE: "parent" is a reserved keyword in some Northstar Squirrel builds
+	entity parentEnt = player.GetParent()
+	entity pet = player.GetPetTitan()
+
+	if ( parentEnt != null && IsValid( pet ) && parentEnt == pet )
+	{
+		// E while riding your own titan: embark
+		player.ClientCommand( "p1lot_buddy_embark" )
+		return
+	}
+
+	if ( file.adsHeld )
+	{
+		// ADS + E: buddy-rodeo your own titan
+		player.ClientCommand( "p1lot_buddy_rodeo" )
+	}
+}
+
+void function P1LOT_OnVDown( var arg )
+{
+	file.vHeld = true
+	file.vDownTime = Time()
+	file.vThreadNonce++
+	int nonce = file.vThreadNonce
+
+	thread P1LOT_VHoldThread( nonce )
+}
+
+void function P1LOT_OnVUp( var arg )
+{
+	file.vHeld = false
+	float held = Time() - file.vDownTime
+
+	// If it was a tap, do the standard toggle.
+	if ( held < P1LOT_V_HOLD_THRESHOLD )
+	{
+		entity localPlayer = GetLocalViewPlayer()
+		if ( IsValid( localPlayer ) )
+			localPlayer.ClientCommand( "TitanNextMode" )
+	}
+}
+
+void function P1LOT_VHoldThread( int nonce )
+{
+	// Wait until it's considered a hold
+	wait P1LOT_V_HOLD_THRESHOLD
+	if ( nonce != file.vThreadNonce )	return
+	if ( !file.vHeld )	return
+
+	// While held, repeatedly send move orders to where you're looking.
+	while ( file.vHeld && nonce == file.vThreadNonce )
+	{
+		P1LOT_SendTitanMovePing()
+		wait 0.30
+	}
+}
+
+void function P1LOT_SendTitanMovePing()
+{
+	entity player = GetLocalViewPlayer()
+	if ( !IsValid( player ) )	return
+	entity titan = player.GetPetTitan()
+	if ( !IsValid( titan ) )	return
+
+	vector start = player.EyePosition()
+	vector dir = player.GetViewVector()
+	vector end = start + dir * 8000.0
+
+	// Trace against world; ignore self.
+	// NOTE: Some client VMs don't expose the trace_t type, but TraceLine still returns a trace table.
+	TraceResults tr = TraceLine( start, end, player, TRACE_MASK_SOLID, TRACE_COLLISION_GROUP_NONE )
+	vector pos = tr.endPos
+
+	player.ClientCommand( "PrototypeOrderTitanMove " + pos.x + " " + pos.y + " " + pos.z )
+}
+
+// Init is called from gamemode/client init (no top-level statements here).

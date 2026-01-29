@@ -1,0 +1,32 @@
+global function Sh_GamemodeP1L0TLobby_Init
+
+global const string GAMEMODE_P1LOT_LOBBY = "p1lot_lobby"
+
+void function Sh_GamemodeP1L0TLobby_Init()
+{
+	if ( "AddCallback_OnCustomGamemodesInit" in getroottable() )
+		getroottable()["AddCallback_OnCustomGamemodesInit"]( CreateGamemodeP1L0TLobby )
+	else
+		CreateGamemodeP1L0TLobby()
+}
+
+void function CreateGamemodeP1L0TLobby()
+{
+	GameMode_Create( GAMEMODE_P1LOT_LOBBY )
+	GameMode_SetName( GAMEMODE_P1LOT_LOBBY, "Project-P1L0T Lobby" )
+	GameMode_SetDesc( GAMEMODE_P1LOT_LOBBY, "Ship hangar sandbox for loadouts and titan control." )
+	GameMode_SetGameModeAnnouncement( GAMEMODE_P1LOT_LOBBY, "ffa_modeDesc" )
+	GameMode_SetDefaultTimeLimits( GAMEMODE_P1LOT_LOBBY, 0, 0.0 )
+	GameMode_SetDefaultScoreLimits( GAMEMODE_P1LOT_LOBBY, 0, 0 )
+	GameMode_SetColor( GAMEMODE_P1LOT_LOBBY, [255, 140, 0, 255] )
+
+	AddPrivateMatchMode( GAMEMODE_P1LOT_LOBBY )
+
+	#if SERVER
+		GameMode_AddServerInit( GAMEMODE_P1LOT_LOBBY, GamemodeP1L0TLobby_Init )
+		GameMode_SetPilotSpawnpointsRatingFunc( GAMEMODE_P1LOT_LOBBY, RateSpawnpoints_Generic )
+		GameMode_SetTitanSpawnpointsRatingFunc( GAMEMODE_P1LOT_LOBBY, RateSpawnpoints_Generic )
+	#elseif CLIENT
+		GameMode_AddClientInit( GAMEMODE_P1LOT_LOBBY, ClGamemodeP1L0TLobby_Init )
+	#endif
+}

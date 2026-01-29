@@ -1,0 +1,418 @@
+global function GamemodeP1L0TLobby_Init
+
+struct
+{
+	entity spawnAnchor
+	bool spawnOverrideEnabled = false
+	vector spawnOverrideOrigin = <0, 0, 0>
+	vector spawnOverrideAngles = <0, 0, 0>
+	bool damageCallbackAdded = false
+} file
+
+void function GamemodeP1L0TLobby_Init()
+{
+	if ( "SetSpawnpointGamemodeOverride" in getroottable() )
+		getroottable()["SetSpawnpointGamemodeOverride"]( FFA )
+	if ( "SetLoadoutGracePeriodEnabled" in getroottable() )
+		getroottable()["SetLoadoutGracePeriodEnabled"]( false )
+
+	AddClientCommandCallback( "P1L0T_SetLobbySpawn", P1L0T_SetLobbySpawnCommand )
+	AddClientCommandCallback( "P1L0T_DumpLobbySpawn", P1L0T_DumpLobbySpawnCommand )
+	AddClientCommandCallback( "P1L0T_ListLobbyAnchors", P1L0T_ListLobbyAnchorsCommand )
+	AddCallback_OnPlayerRespawned( P1L0T_Lobby_OnPlayerRespawned )
+	AddCallback_EntitiesDidLoad( P1L0T_Lobby_OnEntitiesDidLoad )
+	// Enable buddy-titan controls in the sandbox lobby
+	P1LOT_BuddyTitan_ServerInit()
+
+}
+
+void function P1L0T_Lobby_OnEntitiesDidLoad()
+{
+	P1L0T_Lobby_EnableSandboxMode()
+}
+
+void function P1L0T_Lobby_OnPlayerRespawned( entity player )
+{
+	if ( !IsValid( player ) || !IsAlive( player ) )
+		return
+
+	P1L0T_Lobby_MovePlayerToAnchor( player )
+	P1L0T_Lobby_ApplySandboxToPlayer( player )
+}
+
+void function P1L0T_Lobby_MovePlayerToAnchor( entity player )
+{
+	if ( file.spawnOverrideEnabled )
+	{
+		player.SetOrigin( file.spawnOverrideOrigin )
+		player.SetAngles( file.spawnOverrideAngles )
+		return
+	}
+
+	entity anchor = P1L0T_Lobby_FindSpawnAnchor()
+	if ( !IsValid( anchor ) )
+		return
+
+	player.SetOrigin( anchor.GetOrigin() + <0, 0, 16> )
+	player.SetAngles( anchor.GetAngles() )
+}
+
+entity function P1L0T_Lobby_FindSpawnAnchor()
+{
+	if ( IsValid( file.spawnAnchor ) )
+		return file.spawnAnchor
+
+	entity namedAnchor = P1L0T_Lobby_FindNamedAnchor( [ "draconis" ] )
+	if ( IsValid( namedAnchor ) )
+	{
+		file.spawnAnchor = namedAnchor
+		return file.spawnAnchor
+	}
+
+	namedAnchor = P1L0T_Lobby_FindNamedAnchor( [ "draconis", "bridge", "control", "command", "cockpit", "ops", "ark", "hangar", "malta", "barker", "ship" ] )
+	if ( IsValid( namedAnchor ) )
+	{
+		file.spawnAnchor = namedAnchor
+		return file.spawnAnchor
+	}
+
+	array<string> classes = [
+		"info_player_start",
+		"info_player_start_imc",
+		"info_player_start_militia",
+		"info_spawnpoint_human",
+		"info_spawnpoint_titan",
+		"info_intermission",
+		"info_target",
+		"script_ref",
+		"info_teleport_destination"
+	]
+
+	foreach ( string className in classes )
+	{
+		array<entity> ents = GetEntArrayByClass_Expensive( className )
+		if ( ents.len() > 0 )
+		{
+			file.spawnAnchor = ents[0]
+			return file.spawnAnchor
+		}
+	}
+
+	return null
+}
+
+entity function P1L0T_Lobby_FindNamedAnchor( array<string> terms )
+{
+	array<string> classes = [
+		"script_ref",
+		"info_target",
+		"info_player_start",
+		"info_player_start_imc",
+		"info_player_start_militia",
+		"info_spawnpoint_human",
+		"info_spawnpoint_titan",
+		"info_intermission",
+		"info_teleport_destination"
+	]
+
+	array<entity> candidates = []
+	foreach ( string className in classes )
+		candidates.extend( GetEntArrayByClass_Expensive( className ) )
+
+	foreach ( entity ent in candidates )
+	{
+		if ( !IsValid( ent ) )
+			continue
+
+		string targetName = ent.GetTargetName().tolower()
+		string scriptName = ""
+		try
+		{
+			scriptName = ent.GetScriptName().tolower()
+		}
+		catch ( ex )
+		{
+		}
+
+		foreach ( string term in terms )
+		{
+			if ( targetName.find( term ) != null || scriptName.find( term ) != null )
+				return ent
+		}
+	}
+
+	return null
+}
+
+void function P1L0T_Lobby_EnableSandboxMode()
+{
+	if ( "disable_npcs" in getroottable() )
+		getroottable()["disable_npcs"]()
+
+	SetKillcamsEnabled( false )
+	SetPlayerDeathsHidden( true )
+	Riff_ForceTitanAvailability( eTitanAvailability.Always )
+	P1L0T_Lobby_DisableStoryEvents()
+	thread P1L0T_Lobby_DisableStoryEventsDelayed()
+	P1L0T_Lobby_EnableImmortality()
+	P1L0T_Lobby_DisableEnemyAggro()
+	thread P1L0T_Lobby_DisableEnemyAggroDelayed()
+}
+
+void function P1L0T_Lobby_ApplySandboxToPlayer( entity player )
+{
+	player.SetInvulnerable()
+	player.SetNoTarget( true )
+	player.SetNoTargetSmartAmmo( true )
+	P1L0T_Lobby_RefillTitanMeter( player )
+}
+
+void function P1L0T_Lobby_EnableImmortality()
+{
+	if ( file.damageCallbackAdded )
+		return
+
+	file.damageCallbackAdded = true
+	AddDamageCallback( "player", P1L0T_Lobby_OnPlayerDamaged )
+}
+
+void function P1L0T_Lobby_OnPlayerDamaged( entity player, var damageInfo )
+{
+	if ( GetMapName() != "sp_s2s" )
+		return
+
+	DamageInfo_SetDamage( damageInfo, 0 )
+}
+
+void function P1L0T_Lobby_DisableEnemyAggroDelayed()
+{
+	wait 2.0
+	P1L0T_Lobby_DisableEnemyAggro()
+}
+
+void function P1L0T_Lobby_DisableEnemyAggro()
+{
+	array<entity> npcs = GetNPCArray()
+	foreach ( entity npc in npcs )
+	{
+		if ( !IsValid( npc ) )
+			continue
+
+		npc.SetNoTarget( true )
+		npc.SetNoTargetSmartAmmo( true )
+
+		if ( "EnableNPCFlag" in npc )
+		{
+			if ( "NPC_IGNORE_ALL" in getconsttable() )
+				npc.EnableNPCFlag( getconsttable()["NPC_IGNORE_ALL"] )
+			if ( "NPC_DISABLE_SENSING" in getconsttable() )
+				npc.EnableNPCFlag( getconsttable()["NPC_DISABLE_SENSING"] )
+		}
+	}
+
+	array<string> turretClasses = [
+		"npc_turret_mega",
+		"npc_turret_sentry"
+	]
+
+	foreach ( string className in turretClasses )
+	{
+		array<entity> turrets = GetEntArrayByClass_Expensive( className )
+		foreach ( entity turret in turrets )
+		{
+			if ( !IsValid( turret ) )
+				continue
+
+			turret.SetNoTarget( true )
+			turret.SetNoTargetSmartAmmo( true )
+		}
+	}
+}
+
+void function P1L0T_Lobby_DisableStoryEventsDelayed()
+{
+	wait 2.0
+	P1L0T_Lobby_DisableStoryEvents()
+}
+
+void function P1L0T_Lobby_DisableStoryEvents()
+{
+	if ( GetMapName() != "sp_s2s" )
+		return
+
+	array<string> killClasses = [
+		"logic_auto",
+		"logic_relay",
+		"logic_timer",
+		"logic_script",
+		"logic_case",
+		"logic_compare",
+		"logic_branch",
+		"logic_branch_listener",
+		"scripted_sequence",
+		"scene_entity",
+		"point_viewcontrol",
+		"point_camera",
+		"point_clientcommand",
+		"point_servercommand"
+	]
+
+	array<string> disableClasses = [
+		"trigger_once",
+		"trigger_script",
+		"trigger_look",
+		"trigger_transition",
+		"trigger_changelevel",
+		"trigger_playerteam",
+		"trigger_proximity",
+		"trigger_hurt",
+		"trigger_teleport",
+		"trigger_catapult",
+		"trigger_gravity",
+		"trigger_push"
+	]
+
+	P1L0T_Lobby_DisableEntitiesByClass( killClasses, true )
+	P1L0T_Lobby_DisableEntitiesByClass( disableClasses, false )
+}
+
+void function P1L0T_Lobby_DisableEntitiesByClass( array<string> classNames, bool kill )
+{
+	foreach ( string className in classNames )
+	{
+		array<entity> ents = GetEntArrayByClass_Expensive( className )
+		foreach ( entity ent in ents )
+		{
+			if ( !IsValid( ent ) )
+				continue
+
+			EntFireByHandle( ent, "Disable", "", 0, null, null )
+			if ( kill )
+				EntFireByHandle( ent, "Kill", "", 0.1, null, null )
+		}
+	}
+}
+
+void function P1L0T_Lobby_RefillTitanMeter( entity player )
+{
+	if ( !IsValid( player ) )
+		return
+
+	// Prefer engine titan build timer over PlayerEarnMeter_* helpers (not always present).
+	// 0 seconds remaining => Titanfall immediately ready.
+	Riff_ForceTitanAvailability( eTitanAvailability.Always )
+	SetTitanRespawnTimer( player, -999.0 )
+	if ( "SetNextTitanRespawnAvailable" in player )
+		player.SetNextTitanRespawnAvailable( Time() - 1 )
+	if ( "SetTitanBuildTime" in player )
+		player.SetTitanBuildTime( 0.0 )
+}
+
+bool function P1L0T_SetLobbySpawnCommand( entity player, array<string> args )
+{
+	if ( !IsValid( player ) )
+		return true
+
+	vector origin = player.GetOrigin()
+	vector angles = player.GetAngles()
+
+	if ( args.len() >= 6 )
+	{
+		origin = < args[0].tofloat(), args[1].tofloat(), args[2].tofloat() >
+		angles = < args[3].tofloat(), args[4].tofloat(), args[5].tofloat() >
+	}
+	else if ( args.len() >= 1 )
+	{
+		int entIndex = args[0].tointeger()
+		if ( entIndex > 0 )
+		{
+			entity ent = GetEntByIndex( entIndex )
+			if ( IsValid( ent ) )
+			{
+				origin = ent.GetOrigin()
+				angles = ent.GetAngles()
+			}
+		}
+	}
+
+	file.spawnOverrideEnabled = true
+	file.spawnOverrideOrigin = origin
+	file.spawnOverrideAngles = angles
+
+	SendHudMessage( player, "Lobby spawn set", -1, 0.4, 255, 255, 255, 255, 0.15, 2.0, 0.5 )
+	return true
+}
+
+bool function P1L0T_DumpLobbySpawnCommand( entity player, array<string> args )
+{
+	if ( !IsValid( player ) )
+		return true
+
+	vector origin = player.GetOrigin()
+	vector angles = player.GetAngles()
+
+	printt( format( "P1L0T_LobbySpawn origin %0.1f %0.1f %0.1f angles %0.1f %0.1f %0.1f",
+		origin.x, origin.y, origin.z, angles.x, angles.y, angles.z ) )
+
+	SendHudMessage( player, "Lobby spawn printed to console", -1, 0.4, 255, 255, 255, 255, 0.15, 2.0, 0.5 )
+	return true
+}
+
+bool function P1L0T_ListLobbyAnchorsCommand( entity player, array<string> args )
+{
+	if ( !IsValid( player ) )
+		return true
+
+	float radius = 2000.0
+	if ( args.len() >= 1 )
+		radius = args[0].tofloat()
+
+	vector origin = player.GetOrigin()
+	array<string> classes = [
+		"script_ref",
+		"info_target",
+		"info_player_start",
+		"info_player_start_imc",
+		"info_player_start_militia",
+		"info_spawnpoint_human",
+		"info_spawnpoint_titan",
+		"info_intermission",
+		"info_teleport_destination"
+	]
+
+	int count = 0
+	foreach ( string className in classes )
+	{
+		array<entity> ents = GetEntArrayByClass_Expensive( className )
+		foreach ( entity ent in ents )
+		{
+			if ( !IsValid( ent ) )
+				continue
+
+			float dist = Distance( origin, ent.GetOrigin() )
+			if ( dist > radius )
+				continue
+
+			string targetName = ent.GetTargetName()
+			string scriptName = ""
+			try
+			{
+				scriptName = ent.GetScriptName()
+			}
+			catch ( ex )
+			{
+			}
+
+			if ( targetName == "" && scriptName == "" )
+				continue
+
+			printt( format( "P1L0T_Anchor idx %d class %s dist %0.1f target \"%s\" script \"%s\"",
+				ent.entindex(), ent.GetClassName(), dist, targetName, scriptName ) )
+			count++
+		}
+	}
+
+	printt( format( "P1L0T_Anchor total %d within %0.1f", count, radius ) )
+	SendHudMessage( player, format( "Anchor list printed (%d)", count ), -1, 0.4, 255, 255, 255, 255, 0.15, 2.0, 0.5 )
+	return true
+}

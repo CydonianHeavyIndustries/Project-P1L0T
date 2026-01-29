@@ -10,6 +10,12 @@ launcher/desktop/launcher.log
 launcher/desktop/node_modules/
 
 modpack/
+!modpack/R2Northstar/
+modpack/R2Northstar/*
+!modpack/R2Northstar/mods/
+modpack/R2Northstar/mods/*
+!modpack/R2Northstar/mods/P1L0T/
+!modpack/R2Northstar/mods/P1L0T/**
 data/
 Project-P1L0T-modpack*.zip
 

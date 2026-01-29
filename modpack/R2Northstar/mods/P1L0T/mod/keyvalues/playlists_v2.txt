@@ -1,0 +1,22 @@
+playlists
+{
+	Gamemodes
+	{
+		p1lot_lobby
+		{
+			inherit defaults
+			vars
+			{
+				name "Project-P1L0T Lobby"
+				lobbytitle "Project-P1L0T Lobby"
+				description "Ship hangar sandbox for loadouts and titan control."
+				abbreviation "P1"
+				max_players 1
+				max_teams 1
+				classic_mp 1
+				scorelimit 0
+				timelimit 0
+			}
+		}
+	}
+}

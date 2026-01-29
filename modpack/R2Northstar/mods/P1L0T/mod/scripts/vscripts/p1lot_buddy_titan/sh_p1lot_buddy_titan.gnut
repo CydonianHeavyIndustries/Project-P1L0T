@@ -1,0 +1,45 @@
+untyped
+
+global const float P1LOT_V_HOLD_THRESHOLD = 0.25
+
+global function P1LOT_BuddyTitan_SharedInit
+global function P1LOT_EnsureTitanMoveCommandEnabled
+global function P1LOT_GetSafePetTitan
+global function P1LOT_IsMyPetTitan
+
+void function P1LOT_BuddyTitan_SharedInit()
+{
+	P1LOT_EnsureTitanMoveCommandEnabled()
+}
+
+void function P1LOT_EnsureTitanMoveCommandEnabled()
+{
+    // NOTE: don't touch playlist var APIs in shared/client context.
+    // Some Northstar builds do not expose SetPlaylistVarOverride to the CLIENT VM,
+    // which causes a compile error if referenced here.
+    // We enable titan_move_command_enabled from SERVER init instead.
+}
+
+entity function P1LOT_GetSafePetTitan( entity player )
+{
+	if ( !IsValid( player ) )
+		return null
+
+	entity titan = player.GetPetTitan()
+	if ( !IsValid( titan ) )
+		return null
+
+	return titan
+}
+
+bool function P1LOT_IsMyPetTitan( entity player, entity maybeTitan )
+{
+	if ( !IsValid( player ) || !IsValid( maybeTitan ) )
+		return false
+
+	entity pet = player.GetPetTitan()
+	if ( !IsValid( pet ) )
+		return false
+
+	return pet == maybeTitan
+}
